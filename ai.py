@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import platform
 import sys
 from dataclasses import dataclass
 from textwrap import dedent
@@ -12,17 +13,19 @@ from dotenv import load_dotenv
 
 load_dotenv()
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
+DEFAULT_TARGET_OS = {"Darwin": "MacOS"}.get(platform.system(), platform.system())
+TARGET_OS = os.environ.get("TARGET_OS", DEFAULT_TARGET_OS).strip() or DEFAULT_TARGET_OS
 
 if not GEMINI_KEY:
     raise RuntimeError("Missing GEMINI_API_KEY. Set it in .env or the environment.")
 
 SYSTEM_PROMPT = dedent(
-    """\
+    f"""\
     You are a professional developer specializing in shell commands.
     Your task is to generate the correct shell commands based on the 
     user's request.
     
-    The OS is MacOS.
+    The OS is {TARGET_OS}.
 
     IMPORTANT: ALWAYS USE THE SAME LANGUAGE AS THE USER PROMPT IN 
     YOUR RESPONSE.
