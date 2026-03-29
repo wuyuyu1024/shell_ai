@@ -8,12 +8,6 @@ The project is intentionally small:
 - `.env`: local configuration
 - `pyproject.toml`: Python dependencies
 
-## Why Gemini Free Tier Works Here
-
-This project uses the Gemini Developer API through `pydantic-ai` and currently targets `gemini-2.5-flash`.
-
-As of March 30, 2026, Google lists `gemini-2.5-flash` with a free tier on the Gemini API pricing page, so this setup can work with a Google AI Studio / Gemini API key without paid billing, subject to Google's current regional availability, quotas, and account limits.
-
 ## Features
 
 - Turns plain-language requests into shell commands
@@ -51,7 +45,7 @@ As of March 30, 2026, Google lists `gemini-2.5-flash` with a free tier on the Ge
 
 ## Usage
 
-Run it from the project directory:
+### Run From The Repo
 
 ```bash
 uv run ai "find the 20 largest files in this directory"
@@ -63,38 +57,42 @@ Another example:
 uv run ai show me which process is using port 3000
 ```
 
-If you want `ai` available directly in your shell, install this project as a tool:
+### Install As A Global Command
+
+If you want `ai` available directly in your shell from any directory:
 
 ```bash
 uv tool install --from . ai
 ```
 
-If `uv` warns that the tool bin directory is not on `PATH`, either run:
+Then make sure the uv tool bin directory is on your `PATH`.
+
+Recommended:
+
+```bash
+uv tool update-shell
+```
+
+Or for the current shell only:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-To make that permanent in bash:
+Or make it permanent in bash:
 
 ```bash
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
 
-or let `uv` update your shell config:
-
-```bash
-uv tool update-shell
-```
-
-If you already installed it once and want to pick up local code changes, reinstall with:
+If you already installed it once and want to refresh the installed command after local code changes:
 
 ```bash
 uv tool install --from . ai --force --refresh
 ```
 
-After that, these both work:
+After `PATH` is set and `GEMINI_API_KEY` is configured, these both work:
 
 ```bash
 ai show my graphic card
@@ -135,11 +133,18 @@ Environment variables:
 
 - `GEMINI_API_KEY`: required
 - `TARGET_OS`: optional; defaults to the current OS detected by Python
+- `AI_ENV_FILE`: optional; points to a specific `.env` file to load
 
 Notes:
 
 - On macOS, the default target OS is normalized to `MacOS`.
 - If `GEMINI_API_KEY` is missing, the script exits immediately with an error.
+
+## Gemini Free Tier Note
+
+This project uses the Gemini Developer API through `pydantic-ai` and currently targets `gemini-2.5-flash`.
+
+As of March 30, 2026, Google lists `gemini-2.5-flash` with a free tier on the Gemini API pricing page, so this setup can work with a Google AI Studio / Gemini API key without paid billing, subject to Google's current regional availability, quotas, and account limits.
 
 ## Safety
 
