@@ -3,13 +3,23 @@ from __future__ import annotations
 import os
 import platform
 import sys
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from textwrap import dedent
 
+import pydantic.warnings as pydantic_warnings
 from pydantic_ai import Agent
 from pydantic_ai.models.gemini import GeminiModel
 from dotenv import find_dotenv, load_dotenv
+
+
+UnsupportedFieldAttributeWarning = getattr(pydantic_warnings, "UnsupportedFieldAttributeWarning", UserWarning)
+warnings.filterwarnings(
+    "ignore",
+    message=r".*functionDeclarations.*",
+    category=UnsupportedFieldAttributeWarning,
+)
 
 
 def load_env() -> None:
