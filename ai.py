@@ -7,9 +7,14 @@ from textwrap import dedent
 
 from pydantic_ai import Agent
 from pydantic_ai.models.gemini import GeminiModel
+from dotenv import load_dotenv
 
-# GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
+
+load_dotenv()
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
+
+if not GEMINI_KEY:
+    raise RuntimeError("Missing GEMINI_API_KEY. Set it in .env or the environment.")
 
 SYSTEM_PROMPT = dedent(
     """\
@@ -85,9 +90,16 @@ def main() -> None:
     answer = resp.data
     if answer.success and answer.cmd is not None:
         print(f"(AI Answer): {answer.cmd}")
-        y_or_n = input("Execute? Y/N: ")
-        if y_or_n in ["y", "Y"]:
+        #y_or_n = input("Execute? Y/N: ")
+        #if y_or_n in ["y", "Y"]:
+        #    os.system(answer.cmd)
+        choice = input("Execute? [Y/n]: ").strip().lower()
+        if choice == "":
+            choice = "y"
+        if choice == "y":
             os.system(answer.cmd)
+        else:
+            print("Skipped")
     else:
         print(f"(AI Answer): {answer.failure}")
         print("Generate failed")
