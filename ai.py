@@ -4,14 +4,49 @@ import os
 import platform
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from textwrap import dedent
 
 from pydantic_ai import Agent
 from pydantic_ai.models.gemini import GeminiModel
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
 
 
-load_dotenv()
+def load_env() -> None:
+    explicit_env = os.environ.get("AI_ENV_FILE")
+    if explicit_env:
+        explicit_path = Path(explicit_env).expanduser()
+        if not explicit_path.is_file():
+            raise RuntimeError(f"AI_ENV_FILE points to a missing file: {explicit_path}")
+        load_dotenv(explicit_path)
+        return
+
+    candidate_paths: list[Path] = []
+
+    cwd_env = find_dotenv(usecwd=True)
+    if cwd_env:
+        candidate_paths.append(Path(cwd_env))
+
+    source_env = Path(__file__).resolve().with_name(".env")
+    candidate_paths.append(source_env)
+
+    config_home = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")).expanduser()
+    candidate_paths.append(config_home / "shell_ai" / ".env")
+    candidate_paths.append(config_home / "ai" / ".env")
+    candidate_paths.append(Path.home() / ".shell_ai.env")
+
+    seen: set[Path] = set()
+    for path in candidate_paths:
+        resolved = path.resolve(strict=False)
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        if path.is_file():
+            load_dotenv(path)
+            return
+
+
+load_env()
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
 DEFAULT_TARGET_OS = {"Darwin": "MacOS"}.get(platform.system(), platform.system())
 TARGET_OS = os.environ.get("TARGET_OS", DEFAULT_TARGET_OS).strip() or DEFAULT_TARGET_OS
@@ -84,7 +119,7 @@ def answer(success: bool, cmd: str | None, failure: str | None) -> Answer:
 
 
 def main() -> None:
-    user_prompt = "".join(sys.argv[1:])
+    user_prompt = " ".join(sys.argv[1:]).strip()
     if len(user_prompt) == 0:
         print("No prompts")
         sys.exit(1)
