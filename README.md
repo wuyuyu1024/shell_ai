@@ -79,12 +79,24 @@ Or for the current shell only:
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
+```fish
+fish_add_path ~/.local/bin
+```
+
 Or make it permanent in bash:
 
 ```bash
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
 ```
+
+Or make it permanent in fish:
+
+```fish
+fish_add_path -U ~/.local/bin
+```
+
+If `ai` works in `bash` but disappears after restarting `fish`, this is usually the missing step.
 
 If you already installed it once and want to refresh the installed command after local code changes:
 
@@ -112,6 +124,12 @@ For a shell-wide setup, export the key in your shell profile:
 
 ```bash
 export GEMINI_API_KEY=your_gemini_api_key_here
+```
+
+In fish, use a universal variable instead:
+
+```fish
+set -Ux GEMINI_API_KEY your_gemini_api_key_here
 ```
 
 Or store it in a persistent config file:
