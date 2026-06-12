@@ -11,7 +11,7 @@ from textwrap import dedent
 import pydantic.warnings as pydantic_warnings
 from pydantic_ai import Agent
 from pydantic_ai.models.gemini import GeminiModel
-from dotenv import find_dotenv, load_dotenv
+from dotenv import dotenv_values, find_dotenv
 
 
 UnsupportedFieldAttributeWarning = getattr(pydantic_warnings, "UnsupportedFieldAttributeWarning", UserWarning)
@@ -21,6 +21,16 @@ warnings.filterwarnings(
     category=UnsupportedFieldAttributeWarning,
 )
 
+ENV_FILE_KEYS = ("GEMINI_API_KEY", "TARGET_OS")
+
+
+def load_env_file(path: Path) -> None:
+    values = dotenv_values(path)
+    for key in ENV_FILE_KEYS:
+        value = values.get(key)
+        if value is not None and key not in os.environ:
+            os.environ[key] = value
+
 
 def load_env() -> None:
     explicit_env = os.environ.get("AI_ENV_FILE")
@@ -28,7 +38,7 @@ def load_env() -> None:
         explicit_path = Path(explicit_env).expanduser()
         if not explicit_path.is_file():
             raise RuntimeError(f"AI_ENV_FILE points to a missing file: {explicit_path}")
-        load_dotenv(explicit_path)
+        load_env_file(explicit_path)
         return
 
     candidate_paths: list[Path] = []
@@ -52,25 +62,24 @@ def load_env() -> None:
             continue
         seen.add(resolved)
         if path.is_file():
-            load_dotenv(path)
-            return
+            load_env_file(path)
 
 
-load_env()
-GEMINI_KEY = os.environ.get("GEMINI_API_KEY")
 DEFAULT_TARGET_OS = {"Darwin": "MacOS"}.get(platform.system(), platform.system())
-TARGET_OS = os.environ.get("TARGET_OS", DEFAULT_TARGET_OS).strip() or DEFAULT_TARGET_OS
 
-if not GEMINI_KEY:
-    raise RuntimeError("Missing GEMINI_API_KEY. Set it in .env or the environment.")
 
-SYSTEM_PROMPT = dedent(
-    f"""\
+def get_target_os() -> str:
+    return os.environ.get("TARGET_OS", DEFAULT_TARGET_OS).strip() or DEFAULT_TARGET_OS
+
+
+def build_system_prompt(target_os: str) -> str:
+    return dedent(
+        f"""\
     You are a professional developer specializing in shell commands.
     Your task is to generate the correct shell commands based on the 
     user's request.
     
-    The OS is {TARGET_OS}.
+    The OS is {target_os}.
 
     IMPORTANT: ALWAYS USE THE SAME LANGUAGE AS THE USER PROMPT IN 
     YOUR RESPONSE.
@@ -84,7 +93,7 @@ SYSTEM_PROMPT = dedent(
     2. Provide the Final Command: Use the `answer` function to present
     the final shell command concisely.
 """
-)
+    )
 
 
 @dataclass
@@ -94,14 +103,6 @@ class Answer:
     failure: str | None
 
 
-agent = Agent(
-    model=GeminiModel("gemini-2.5-flash", api_key=GEMINI_KEY),
-    system_prompt=SYSTEM_PROMPT,
-    result_type=Answer,
-)
-
-
-@agent.tool_plain
 def think(s: str) -> None:
     """Communicate your thought process to the user.
 
@@ -111,7 +112,6 @@ def think(s: str) -> None:
     print(f"(AI Thinking): {s}\n")
 
 
-@agent.tool_plain
 def answer(success: bool, cmd: str | None, failure: str | None) -> Answer:
     """Provide the final shell command or explain why it couldn't be generated.
 
@@ -128,12 +128,45 @@ def answer(success: bool, cmd: str | None, failure: str | None) -> Answer:
     return Answer(success, cmd, failure)
 
 
+def build_agent(gemini_key: str, target_os: str) -> Agent:
+    cli_agent = Agent(
+        model=GeminiModel("gemini-2.5-flash", api_key=gemini_key),
+        system_prompt=build_system_prompt(target_os),
+        result_type=Answer,
+    )
+    cli_agent.tool_plain(think)
+    cli_agent.tool_plain(answer)
+    return cli_agent
+
+
+def print_config_error(message: str) -> None:
+    print(f"Error: {message}", file=sys.stderr)
+    print("", file=sys.stderr)
+    print("Set GEMINI_API_KEY in one of these places:", file=sys.stderr)
+    print("- your shell environment", file=sys.stderr)
+    print("- a .env file in the directory where you run ai", file=sys.stderr)
+    print("- ~/.config/shell_ai/.env", file=sys.stderr)
+    print("- a file pointed to by AI_ENV_FILE", file=sys.stderr)
+
+
 def main() -> None:
+    try:
+        load_env()
+    except RuntimeError as exc:
+        print_config_error(str(exc))
+        sys.exit(1)
+
+    gemini_key = os.environ.get("GEMINI_API_KEY")
+    if not gemini_key:
+        print_config_error("Missing GEMINI_API_KEY.")
+        sys.exit(1)
+
     user_prompt = " ".join(sys.argv[1:]).strip()
     if len(user_prompt) == 0:
         print("No prompts")
         sys.exit(1)
 
+    agent = build_agent(gemini_key, get_target_os())
     resp = agent.run_sync(user_prompt)
     answer = resp.data
     if answer.success and answer.cmd is not None:

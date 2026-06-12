@@ -57,54 +57,99 @@ Another example:
 uv run ai show me which process is using port 3000
 ```
 
-### Install As A Global Command
+### Install the `ai` Command
 
-If you want `ai` available directly in your shell from any directory:
+Use this if you want to type `ai ...` from any directory instead of running
+`uv run ai ...` from this repo.
+
+1. From this repo, install the command:
 
 ```bash
 uv tool install --from . ai
 ```
 
-Then make sure the uv tool bin directory is on your `PATH`.
+This installs the project as a uv tool and creates an `ai` executable in uv's
+tool bin directory.
 
-Recommended:
+2. Let uv update your shell configuration:
 
 ```bash
 uv tool update-shell
 ```
 
-Or for the current shell only:
+Restart your terminal after running it.
+
+3. Check that your shell can find the installed command:
+
+```bash
+command -v ai
+```
+
+This should print the path to the installed `ai` executable.
+
+#### Configure `GEMINI_API_KEY`
+
+For a global install, choose one of these setups.
+
+Option 1: store only this tool's config in `~/.config/shell_ai/.env`:
+
+```bash
+mkdir -p ~/.config/shell_ai
+printf 'GEMINI_API_KEY=your_gemini_api_key_here\n' > ~/.config/shell_ai/.env
+```
+
+Option 2: keep the real `.env` only in this repo and link to it:
+
+```bash
+mkdir -p ~/.config/shell_ai
+ln -s "$(pwd)/.env" ~/.config/shell_ai/.env
+readlink ~/.config/shell_ai/.env
+```
+
+The `readlink` command should print the full path to this repo's `.env` file.
+After that, `ai ...` can read the repo `.env` from any directory.
+
+The CLI only reads `GEMINI_API_KEY` and `TARGET_OS` from `.env` files. Other
+values in the file are ignored by `ai`.
+
+#### Manual `PATH` setup
+
+Most users can stop after `uv tool update-shell`. Use this section only if
+`command -v ai` prints nothing.
+
+First, ask uv where it installs tool commands:
+
+```bash
+uv tool dir --bin
+```
+
+Then add that directory to your `PATH`. Only use the block for your shell.
+
+Bash or zsh:
+
+Add this line to your shell startup file, such as `~/.zshrc` or `~/.bashrc`:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-```fish
-fish_add_path ~/.local/bin
-```
-
-Or make it permanent in bash:
-
-```bash
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
-```
-
-Or make it permanent in fish:
+Fish:
 
 ```fish
 fish_add_path -U ~/.local/bin
 ```
 
-If `ai` works in `bash` but disappears after restarting `fish`, this is usually the missing step.
+If `uv tool dir --bin` prints a different directory, use that path instead of
+`~/.local/bin`.
 
-If you already installed it once and want to refresh the installed command after local code changes:
+If you already installed it once and want to refresh the command after local
+code changes:
 
 ```bash
 uv tool install --from . ai --force --refresh
 ```
 
-After `PATH` is set and `GEMINI_API_KEY` is configured, these both work:
+After `PATH` and `GEMINI_API_KEY` are configured, these examples work:
 
 ```bash
 ai show my graphic card
@@ -119,25 +164,6 @@ When installed as a tool, `ai` can read `GEMINI_API_KEY` from:
 - `~/.config/ai/.env`
 - `~/.shell_ai.env`
 - a file pointed to by `AI_ENV_FILE`
-
-For a shell-wide setup, export the key in your shell profile:
-
-```bash
-export GEMINI_API_KEY=your_gemini_api_key_here
-```
-
-In fish, use a universal variable instead:
-
-```fish
-set -Ux GEMINI_API_KEY your_gemini_api_key_here
-```
-
-Or store it in a persistent config file:
-
-```bash
-mkdir -p ~/.config/shell_ai
-printf 'GEMINI_API_KEY=your_gemini_api_key_here\n' > ~/.config/shell_ai/.env
-```
 
 The flow is:
 
